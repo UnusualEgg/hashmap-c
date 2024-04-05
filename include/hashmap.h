@@ -19,9 +19,11 @@ typedef struct {
     uint8_t last_hash[SHA256_DIGEST_LENGTH];
 } hashmap_t;
 
-//creation
+
+//creation&deletion
 hashmap_t* hm_create();
 void hm_free(hashmap_t* hashmap);
+hashmap_t* hm_clone(hashmap_t* m);
 
 //find
 #define hm_finds hm_find
@@ -59,6 +61,8 @@ void* hm_get_fail(hashmap_t* hashmap,const char* key,size_t* size);
 void hm_delete(hashmap_t* hashmap,const char* key,size_t key_size);
 
 void hm_debug(hashmap_t* hashmap);
-hashmap_t* hm_clone(hashmap_t* m);
+//'\n' will be printed after this is called
+typedef void(*hm_value_handler)(struct hashmap_node*);
+void hm_debugx(hashmap_t* hashmap,hm_value_handler handler);
 
 
