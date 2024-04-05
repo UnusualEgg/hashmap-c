@@ -208,7 +208,17 @@ void hm_free(hashmap_t* hashmap){
     free(hashmap);
 }
 
+void print_val_default(struct hashmap_node* node) {
+        printf("\"%c\"",*(char*)(node->val));
+        if (node->val_size==sizeof(int)) {
+            printf("/%d",*(int*)node->val);
+        }
+        printf("(%p)}",node->val);
+}
 void hm_debug(hashmap_t* hashmap){
+    hm_debugx(hashmap,print_val_default);
+}
+void hm_debugx(hashmap_t* hashmap,hm_value_handler handler){
     printf("hashmap {\n\tlen:%zd\n\tnodes:\n",hashmap->len);
     struct hashmap_node* node=hashmap->nodes;
     for (size_t i=0;i<hashmap->len;i++){
@@ -216,11 +226,9 @@ void hm_debug(hashmap_t* hashmap){
         for (size_t key=0;key<SHA256_DIGEST_LENGTH;key++){
             printf("%02x",node->key[key]);
         }
-        printf("], val:\"%c\"",*(char*)(node->val));
-        if (node->val_size==sizeof(int)) {
-            printf("/%d",*(int*)node->val);
-        }
-        printf("(%p)}\n",node->val);
+        printf("], val:");
+        handler(node);
+        printf("\n");
         node=node->next;
     }
     printf("}\n");
