@@ -37,7 +37,7 @@ struct hashmap_node* hm_findi(hashmap_t* hashmap,const int key) {
 }
 //last is set if find failed. Otherwise, last is untouched
 //last is node->next
-struct hashmap_node* hm_findx(hashmap_t* hashmap,const char* key,size_t key_size) {
+struct hashmap_node* hm_findx(hashmap_t* hashmap,const void* key,size_t key_size) {
     //see if we haz it and if so then set, else malloc
     //SHA256_Update(&_ctx,key,strlen((const char*)key));
     uint8_t* hash=SHA256((const unsigned char*)key,key_size,hashmap->last_hash);
@@ -64,7 +64,7 @@ void* hm_newc(hashmap_t* hashmap,const char key) {
 void* hm_newi(hashmap_t* hashmap,const int key) {
     return hm_newx(hashmap,(const char*)&key,sizeof(int));
 }
-void* hm_newx(hashmap_t* hashmap,const char* key,size_t key_size) {
+void* hm_newx(hashmap_t* hashmap,const void* key,size_t key_size) {
     SHA256((const unsigned char*)key,key_size,hashmap->last_hash);
     struct hashmap_node* node=hashmap->nodes;
     struct hashmap_node** ptr=&hashmap->nodes;
@@ -144,7 +144,7 @@ void* hm_getc(hashmap_t* hashmap,const char key) {
 void* hm_geti(hashmap_t* hashmap,const int key) {
     return hm_getx(hashmap,(const char*)&key,sizeof(int));
 }
-void* hm_getx(hashmap_t* hashmap,const char* key,size_t key_size) {
+void* hm_getx(hashmap_t* hashmap,const void* key,size_t key_size) {
     //find
     struct hashmap_node* node=hm_findx(hashmap,key,key_size);
     if (node){return node->val;}
@@ -152,7 +152,7 @@ void* hm_getx(hashmap_t* hashmap,const char* key,size_t key_size) {
 }
 //size of value
 //give a ptr to a var that we'll change
-void* hm_getn(hashmap_t* hashmap,const char* key,size_t key_size,size_t* size) {
+void* hm_getn(hashmap_t* hashmap,const void* key,size_t key_size,size_t* size) {
     //find
     struct hashmap_node* node=hm_findx(hashmap,key,key_size);
     if (node){if (size){*size=node->val_size;}return node->val;}
@@ -169,7 +169,7 @@ void* hm_get_fail(hashmap_t* hashmap,const char* key,size_t* size) {
 }
 
 
-void hm_delete(hashmap_t* hashmap,const char* key,size_t key_size) {
+void hm_delete(hashmap_t* hashmap,const void* key,size_t key_size) {
     uint8_t* hash=SHA256((const unsigned char*)key,key_size,hashmap->last_hash);
     //TODO refactor    
     struct hashmap_node* node=hashmap->nodes;
