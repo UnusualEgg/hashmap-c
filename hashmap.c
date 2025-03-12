@@ -11,7 +11,7 @@
 // #include "print.h"
 
 hashmap_t *hm_create(void) {
-    hashmap_t *m = malloc(sizeof(hashmap_t));
+    hashmap_t *m = HM_MALLOC(sizeof(hashmap_t));
     m->len = 0;
     m->nodes = NULL;
     m->last = &m->nodes;
@@ -78,7 +78,7 @@ void *hm_newx(hashmap_t *hashmap, const void *key, size_t key_size) {
 void *hm_set_ptr(hashmap_t *hashmap, struct hashmap_node *node, void *p, size_t val_size) {
     if (node) {
         // set an existing one
-        free(node->val);
+        HM_FREE(node->val);
         // set attributes
         node->val = p;
         node->val_size = val_size;
@@ -110,7 +110,7 @@ void *hm_seti(hashmap_t *hashmap, struct hashmap_node *node, int val) {
 
 void *hm_setx(hashmap_t *hashmap, struct hashmap_node *find, void *val, size_t val_size) {
     if (!find) {
-        find = malloc(sizeof(struct hashmap_node));
+        find = HM_MALLOC(sizeof(struct hashmap_node));
         if (!find) {
             fprintf(stderr, "%s\n", strerror(errno));
             exit(EXIT_FAILURE);
@@ -118,7 +118,7 @@ void *hm_setx(hashmap_t *hashmap, struct hashmap_node *find, void *val, size_t v
         *(hashmap->last) = find;
         // set attributes
         memcpy(find->key, hashmap->last_hash, SHA256_DIGEST_LENGTH);
-        find->val = malloc(val_size);
+        find->val = HM_MALLOC(val_size);
         memcpy(find->val, val, val_size);
         find->val_size = val_size;
         find->next = NULL;
@@ -127,8 +127,8 @@ void *hm_setx(hashmap_t *hashmap, struct hashmap_node *find, void *val, size_t v
         return find->val;
     }
     if (find->val_size != val_size) {
-        free(find->val);
-        find->val = malloc(val_size);
+        HM_FREE(find->val);
+        find->val = HM_MALLOC(val_size);
     }
     memcpy(find->val, val, val_size);
     return find->val;
@@ -182,12 +182,12 @@ void hm_delete(hashmap_t *hashmap, const void *key, size_t key_size) {
         if (check_equ(node->key, hash)) {
             if (prev) {
                 prev->next = node->next;
-                free(node->val);
-                free(node);
+                HM_FREE(node->val);
+                HM_FREE(node);
             } else {
                 hashmap->nodes = node->next;
-                free(node->val);
-                free(node);
+                HM_FREE(node->val);
+                HM_FREE(node);
             }
             hashmap->len--;
             return;
@@ -205,11 +205,11 @@ void hm_free(hashmap_t *hashmap) {
         printf("freeing node %p\n", node);
 #endif
         next = node->next;
-        free(node->val);
-        free(node);
+        HM_FREE(node->val);
+        HM_FREE(node);
         node = next;
     }
-    free(hashmap);
+    HM_FREE(hashmap);
 }
 
 void print_val_default(struct hashmap_node *node) {
@@ -237,7 +237,7 @@ void hm_debugx(hashmap_t *hashmap, hm_value_handler handler) {
 }
 
 hashmap_t *hm_clone(hashmap_t *m) {
-    hashmap_t *new = malloc(sizeof(hashmap_t));
+    hashmap_t *new = HM_MALLOC(sizeof(hashmap_t));
     if (!new) {
         return NULL;
     }
@@ -247,14 +247,14 @@ hashmap_t *hm_clone(hashmap_t *m) {
     struct hashmap_node *new_n = NULL;
     while (n) {
         if (!new_n) {
-            new->nodes = malloc(sizeof(struct hashmap_node));
+            new->nodes = HM_MALLOC(sizeof(struct hashmap_node));
             if (!new->nodes) {
                 fprintf(stderr, "%s\n", strerror(errno));
                 exit(EXIT_FAILURE);
             }
             new_n = new->nodes;
         } else {
-            new_n->next = malloc(sizeof(struct hashmap_node));
+            new_n->next = HM_MALLOC(sizeof(struct hashmap_node));
             if (!new_n->next) {
                 fprintf(stderr, "%s\n", strerror(errno));
                 exit(EXIT_FAILURE);
@@ -262,7 +262,7 @@ hashmap_t *hm_clone(hashmap_t *m) {
             new_n = new_n->next;
         }
         memcpy(new_n->key, n->key, SHA256_DIGEST_LENGTH);
-        new_n->val = malloc(n->val_size);
+        new_n->val = HM_MALLOC(n->val_size);
         if (!new_n->val) {
             fprintf(stderr, "%s\n", strerror(errno));
             exit(EXIT_FAILURE);

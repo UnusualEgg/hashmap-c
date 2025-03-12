@@ -5,6 +5,13 @@
 // #define OPENSSL_API_COMPAT 0x30000000L
 #include <openssl/sha.h>
 
+#ifndef HM_MALLOC
+#define HM_MALLOC(s) malloc(s)
+#endif
+#ifndef HM_FREE
+#define HM_FREE(p) free(p)
+#endif
+
 struct hashmap_node {
     uint8_t key[SHA256_DIGEST_LENGTH];
     void *val;
