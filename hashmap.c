@@ -1,266 +1,278 @@
 #include "hashmap.h"
 
-//#define OPENSSL_API_COMPAT 0x30000000L
+// #define OPENSSL_API_COMPAT 0x30000000L
+#include <assert.h>
+#include <errno.h>
 #include <openssl/sha.h>
+#include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdbool.h>
-#include <errno.h>
-#include <stdio.h>
-#include <assert.h>
-//#include "print.h"
+// #include "print.h"
 
-
-hashmap_t* hm_create() {
-    hashmap_t* m = malloc(sizeof(hashmap_t));
-    m->len=0;
-    m->nodes=NULL;
-    m->last=&m->nodes;
+hashmap_t *hm_create(void) {
+    hashmap_t *m = malloc(sizeof(hashmap_t));
+    m->len = 0;
+    m->nodes = NULL;
+    m->last = &m->nodes;
     return m;
 }
 
 bool check_equ(uint8_t hash1[SHA256_DIGEST_LENGTH], uint8_t hash2[SHA256_DIGEST_LENGTH]) {
-    for (size_t i=0;i<SHA256_DIGEST_LENGTH;i++){
-        if(hash1[i]!=hash2[i]) {return false;}
+    for (size_t i = 0; i < SHA256_DIGEST_LENGTH; i++) {
+        if (hash1[i] != hash2[i]) {
+            return false;
+        }
     }
     return true;
 }
 
-struct hashmap_node* hm_find(hashmap_t* hashmap,const char* key) {
-    return hm_findx(hashmap,key,strlen(key));
+struct hashmap_node *hm_find(hashmap_t *hashmap, const char *key) {
+    return hm_findx(hashmap, key, strlen(key));
 }
-struct hashmap_node* hm_findc(hashmap_t* hashmap,const char key) {
-    return hm_findx(hashmap,&key,1);
+struct hashmap_node *hm_findc(hashmap_t *hashmap, const char key) {
+    return hm_findx(hashmap, &key, 1);
 }
-struct hashmap_node* hm_findi(hashmap_t* hashmap,const int key) {
-    return hm_findx(hashmap,(const char*)&(key),sizeof(int));
+struct hashmap_node *hm_findi(hashmap_t *hashmap, const int key) {
+    return hm_findx(hashmap, (const char *)&(key), sizeof(int));
 }
-//last is set if find failed. Otherwise, last is untouched
-//last is node->next
-struct hashmap_node* hm_findx(hashmap_t* hashmap,const void* key,size_t key_size) {
-    //see if we haz it and if so then set, else malloc
-    //SHA256_Update(&_ctx,key,strlen((const char*)key));
-    uint8_t* hash=SHA256((const unsigned char*)key,key_size,hashmap->last_hash);
-    //SHA256_Final(digest,&_ctx);
-    
-    struct hashmap_node* node=hashmap->nodes;
-    struct hashmap_node** ptr=&hashmap->nodes;
-    while(node) {
-        if (check_equ(node->key,hash)) {
+// last is set if find failed. Otherwise, last is untouched
+// last is node->next
+struct hashmap_node *hm_findx(hashmap_t *hashmap, const void *key, size_t key_size) {
+    // see if we haz it and if so then set, else malloc
+    // SHA256_Update(&_ctx,key,strlen((const char*)key));
+    uint8_t *hash = SHA256((const unsigned char *)key, key_size, hashmap->last_hash);
+    // SHA256_Final(digest,&_ctx);
+
+    struct hashmap_node *node = hashmap->nodes;
+    struct hashmap_node **ptr = &hashmap->nodes;
+    while (node) {
+        if (check_equ(node->key, hash)) {
             return node;
         }
-        ptr=&(node->next);
-        node=node->next;
+        ptr = &(node->next);
+        node = node->next;
     }
-    hashmap->last=ptr;
+    hashmap->last = ptr;
     return NULL;
 }
-void* hm_new(hashmap_t* hashmap,const char* key) {
-    return hm_newx(hashmap,key,strlen(key));
+void *hm_new(hashmap_t *hashmap, const char *key) { return hm_newx(hashmap, key, strlen(key)); }
+void *hm_newc(hashmap_t *hashmap, const char key) { return hm_newx(hashmap, &key, 1); }
+void *hm_newi(hashmap_t *hashmap, const int key) {
+    return hm_newx(hashmap, (const char *)&key, sizeof(int));
 }
-void* hm_newc(hashmap_t* hashmap,const char key) {
-    return hm_newx(hashmap,&key,1);
-}
-void* hm_newi(hashmap_t* hashmap,const int key) {
-    return hm_newx(hashmap,(const char*)&key,sizeof(int));
-}
-void* hm_newx(hashmap_t* hashmap,const void* key,size_t key_size) {
-    SHA256((const unsigned char*)key,key_size,hashmap->last_hash);
-    struct hashmap_node* node=hashmap->nodes;
-    struct hashmap_node** ptr=&hashmap->nodes;
-    while(node) {
-        ptr=&(node->next);
-        node=node->next;
+void *hm_newx(hashmap_t *hashmap, const void *key, size_t key_size) {
+    SHA256((const unsigned char *)key, key_size, hashmap->last_hash);
+    struct hashmap_node *node = hashmap->nodes;
+    struct hashmap_node **ptr = &hashmap->nodes;
+    while (node) {
+        ptr = &(node->next);
+        node = node->next;
     }
-    hashmap->last=ptr;
-    //so you can put this in the node parameter
+    hashmap->last = ptr;
+    // so you can put this in the node parameter
     return NULL;
 }
 
-//if node is NULL then it assumes you called hm_new
-void* hm_set_ptr(hashmap_t* hashmap,struct hashmap_node* node, void* p,size_t val_size) {
+// if node is NULL then it assumes you called hm_new
+void *hm_set_ptr(hashmap_t *hashmap, struct hashmap_node *node, void *p, size_t val_size) {
     if (node) {
-        //set an existing one
+        // set an existing one
         free(node->val);
-        //set attributes
-        node->val=p;
-        node->val_size=val_size;
+        // set attributes
+        node->val = p;
+        node->val_size = val_size;
         hashmap->len++;
         return node->val;
     }
-    //make a new one
-    node=*(hashmap->last);//last was set by find
-    //set attributes
-    memcpy(node->key,hashmap->last_hash,SHA256_DIGEST_LENGTH);
-    node->val=p;
-    node->val_size=val_size;
-    node->next=NULL; 
+    // make a new one
+    node = *(hashmap->last); // last was set by find
+    // set attributes
+    memcpy(node->key, hashmap->last_hash, SHA256_DIGEST_LENGTH);
+    node->val = p;
+    node->val_size = val_size;
+    node->next = NULL;
     hashmap->len++;
     return node;
 }
-//string
-void* hm_set(hashmap_t* hashmap,struct hashmap_node* node, void* val) {
-    return hm_setx(hashmap,node,val,strlen(val));
+// string
+void *hm_set(hashmap_t *hashmap, struct hashmap_node *node, void *val) {
+    return hm_setx(hashmap, node, val, strlen(val));
 }
-//char
-void* hm_setc(hashmap_t* hashmap,struct hashmap_node* node, char val) {
-    return hm_setx(hashmap,node,&val,1);
+// char
+void *hm_setc(hashmap_t *hashmap, struct hashmap_node *node, char val) {
+    return hm_setx(hashmap, node, &val, 1);
 }
-//int
-void* hm_seti(hashmap_t* hashmap,struct hashmap_node* node, int val) {
-    return hm_setx(hashmap,node,&val,sizeof(int));
+// int
+void *hm_seti(hashmap_t *hashmap, struct hashmap_node *node, int val) {
+    return hm_setx(hashmap, node, &val, sizeof(int));
 }
 
-void* hm_setx(hashmap_t* hashmap,struct hashmap_node* find, void* val,size_t val_size) {
+void *hm_setx(hashmap_t *hashmap, struct hashmap_node *find, void *val, size_t val_size) {
     if (!find) {
-        find=malloc(sizeof(struct hashmap_node));
-        if (!find) {fprintf(stderr,"%s\n",strerror(errno));exit(EXIT_FAILURE);}
-        *(hashmap->last)=find;
-        //set attributes
-        memcpy(find->key,hashmap->last_hash,SHA256_DIGEST_LENGTH);
-        find->val=malloc(val_size);
-        memcpy(find->val,val,val_size);
-        find->val_size=val_size;
-        find->next=NULL;
+        find = malloc(sizeof(struct hashmap_node));
+        if (!find) {
+            fprintf(stderr, "%s\n", strerror(errno));
+            exit(EXIT_FAILURE);
+        }
+        *(hashmap->last) = find;
+        // set attributes
+        memcpy(find->key, hashmap->last_hash, SHA256_DIGEST_LENGTH);
+        find->val = malloc(val_size);
+        memcpy(find->val, val, val_size);
+        find->val_size = val_size;
+        find->next = NULL;
 
         hashmap->len++;
         return find->val;
     }
-    if(find->val_size != val_size) {
+    if (find->val_size != val_size) {
         free(find->val);
-        find->val=malloc(val_size);
+        find->val = malloc(val_size);
     }
-    memcpy(find->val,val,val_size);
+    memcpy(find->val, val, val_size);
     return find->val;
 }
 
-//get functions
-void* hm_get(hashmap_t* hashmap,const char* key) {
-    return hm_getx(hashmap,key,strlen((const char*)key));
+// get functions
+void *hm_get(hashmap_t *hashmap, const char *key) {
+    return hm_getx(hashmap, key, strlen((const char *)key));
 }
-void* hm_getc(hashmap_t* hashmap,const char key) {
-    return hm_getx(hashmap,&key,1);
+void *hm_getc(hashmap_t *hashmap, const char key) { return hm_getx(hashmap, &key, 1); }
+void *hm_geti(hashmap_t *hashmap, const int key) {
+    return hm_getx(hashmap, (const char *)&key, sizeof(int));
 }
-void* hm_geti(hashmap_t* hashmap,const int key) {
-    return hm_getx(hashmap,(const char*)&key,sizeof(int));
-}
-void* hm_getx(hashmap_t* hashmap,const void* key,size_t key_size) {
-    //find
-    struct hashmap_node* node=hm_findx(hashmap,key,key_size);
-    if (node){return node->val;}
+void *hm_getx(hashmap_t *hashmap, const void *key, size_t key_size) {
+    // find
+    struct hashmap_node *node = hm_findx(hashmap, key, key_size);
+    if (node) {
+        return node->val;
+    }
     return NULL;
 }
-//size of value
-//give a ptr to a var that we'll change
-void* hm_getn(hashmap_t* hashmap,const void* key,size_t key_size,size_t* size) {
-    //find
-    struct hashmap_node* node=hm_findx(hashmap,key,key_size);
-    if (node){if (size){*size=node->val_size;}return node->val;}
+// size of value
+// give a ptr to a var that we'll change
+void *hm_getn(hashmap_t *hashmap, const void *key, size_t key_size, size_t *size) {
+    // find
+    struct hashmap_node *node = hm_findx(hashmap, key, key_size);
+    if (node) {
+        if (size) {
+            *size = node->val_size;
+        }
+        return node->val;
+    }
     return NULL;
 }
 
-void* hm_get_fail(hashmap_t* hashmap,const char* key,size_t* size) {
-    char* str=(char*)hm_getn(hashmap,key,strlen(key),size);
+void *hm_get_fail(hashmap_t *hashmap, const char *key, size_t *size) {
+    char *str = (char *)hm_getn(hashmap, key, strlen(key), size);
     if (!str) {
-        fprintf(stderr,"Key \"%s\" not in dict\n",key);
+        fprintf(stderr, "Key \"%s\" not in dict\n", key);
         exit(EXIT_FAILURE);
     }
     return str;
 }
 
-
-void hm_delete(hashmap_t* hashmap,const void* key,size_t key_size) {
-    uint8_t* hash=SHA256((const unsigned char*)key,key_size,hashmap->last_hash);
-    //TODO refactor    
-    struct hashmap_node* node=hashmap->nodes;
-    struct hashmap_node* prev=NULL;
-    while(node) {
-        if (check_equ(node->key,hash)) {
+void hm_delete(hashmap_t *hashmap, const void *key, size_t key_size) {
+    uint8_t *hash = SHA256((const unsigned char *)key, key_size, hashmap->last_hash);
+    // TODO refactor
+    struct hashmap_node *node = hashmap->nodes;
+    struct hashmap_node *prev = NULL;
+    while (node) {
+        if (check_equ(node->key, hash)) {
             if (prev) {
-                prev->next=node->next;
+                prev->next = node->next;
                 free(node->val);
                 free(node);
             } else {
-                hashmap->nodes=node->next;
+                hashmap->nodes = node->next;
                 free(node->val);
                 free(node);
             }
             hashmap->len--;
             return;
         }
-        prev=node;
-        node=node->next;
+        prev = node;
+        node = node->next;
     }
 }
-void hm_free(hashmap_t* hashmap){
-    
-    struct hashmap_node* node = hashmap->nodes;
-    struct hashmap_node* next = hashmap->nodes;
-    while (node){
+void hm_free(hashmap_t *hashmap) {
+
+    struct hashmap_node *node = hashmap->nodes;
+    struct hashmap_node *next = hashmap->nodes;
+    while (node) {
 #if dbp
-        printf("freeing node %p\n",node);
+        printf("freeing node %p\n", node);
 #endif
-        next=node->next;
+        next = node->next;
         free(node->val);
         free(node);
-        node=next;
+        node = next;
     }
     free(hashmap);
 }
 
-void print_val_default(struct hashmap_node* node) {
-        printf("\"%c\"",*(char*)(node->val));
-        if (node->val_size==sizeof(int)) {
-            printf("/%d",*(int*)node->val);
-        }
-        printf("(%p)}",node->val);
+void print_val_default(struct hashmap_node *node) {
+    printf("\"%c\"", *(char *)(node->val));
+    if (node->val_size == sizeof(int)) {
+        printf("/%d", *(int *)node->val);
+    }
+    printf("(%p)}", node->val);
 }
-void hm_debug(hashmap_t* hashmap){
-    hm_debugx(hashmap,print_val_default);
-}
-void hm_debugx(hashmap_t* hashmap,hm_value_handler handler){
-    printf("hashmap {\n\tlen:%zd\n\tnodes:\n",hashmap->len);
-    struct hashmap_node* node=hashmap->nodes;
-    for (size_t i=0;i<hashmap->len;i++){
-        printf("\tnode(%p){key:[",(void*)node);
-        for (size_t key=0;key<SHA256_DIGEST_LENGTH;key++){
-            printf("%02x",node->key[key]);
+void hm_debug(hashmap_t *hashmap) { hm_debugx(hashmap, print_val_default); }
+void hm_debugx(hashmap_t *hashmap, hm_value_handler handler) {
+    printf("hashmap {\n\tlen:%zd\n\tnodes:\n", hashmap->len);
+    struct hashmap_node *node = hashmap->nodes;
+    for (size_t i = 0; i < hashmap->len; i++) {
+        printf("\tnode(%p){key:[", (void *)node);
+        for (size_t key = 0; key < SHA256_DIGEST_LENGTH; key++) {
+            printf("%02x", node->key[key]);
         }
         printf("], val:");
         handler(node);
         printf("\n");
-        node=node->next;
+        node = node->next;
     }
     printf("}\n");
 }
 
-hashmap_t* hm_clone(hashmap_t* m) {
-    hashmap_t* new=malloc(sizeof(hashmap_t));
-    if (!new) {return NULL;}
-    new->len=m->len;
-    
+hashmap_t *hm_clone(hashmap_t *m) {
+    hashmap_t *new = malloc(sizeof(hashmap_t));
+    if (!new) {
+        return NULL;
+    }
+    new->len = m->len;
 
-    struct hashmap_node* n = m->nodes;
-    struct hashmap_node* new_n=NULL;
+    struct hashmap_node *n = m->nodes;
+    struct hashmap_node *new_n = NULL;
     while (n) {
         if (!new_n) {
-            new->nodes=malloc(sizeof(struct hashmap_node));
-            if (!new->nodes) {fprintf(stderr,"%s\n",strerror(errno));exit(EXIT_FAILURE);}
-            new_n=new->nodes;
-        }else {
-            new_n->next=malloc(sizeof(struct hashmap_node));
-            if (!new_n->next) {fprintf(stderr,"%s\n",strerror(errno));exit(EXIT_FAILURE);}
-            new_n=new_n->next;
+            new->nodes = malloc(sizeof(struct hashmap_node));
+            if (!new->nodes) {
+                fprintf(stderr, "%s\n", strerror(errno));
+                exit(EXIT_FAILURE);
+            }
+            new_n = new->nodes;
+        } else {
+            new_n->next = malloc(sizeof(struct hashmap_node));
+            if (!new_n->next) {
+                fprintf(stderr, "%s\n", strerror(errno));
+                exit(EXIT_FAILURE);
+            }
+            new_n = new_n->next;
         }
-        memcpy(new_n->key,n->key,SHA256_DIGEST_LENGTH);
-        new_n->val=malloc(n->val_size);
-        if (!new_n->val) {fprintf(stderr,"%s\n",strerror(errno));exit(EXIT_FAILURE);}
+        memcpy(new_n->key, n->key, SHA256_DIGEST_LENGTH);
+        new_n->val = malloc(n->val_size);
+        if (!new_n->val) {
+            fprintf(stderr, "%s\n", strerror(errno));
+            exit(EXIT_FAILURE);
+        }
 
-        memcpy(new_n->val,n->val,n->val_size);
-        new_n->val_size=n->val_size;
-        new_n->next=NULL;
+        memcpy(new_n->val, n->val, n->val_size);
+        new_n->val_size = n->val_size;
+        new_n->next = NULL;
 
-        n=n->next;
+        n = n->next;
     }
     return new;
 }
