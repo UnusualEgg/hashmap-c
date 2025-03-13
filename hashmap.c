@@ -190,11 +190,12 @@ void hm_delete(hashmap_t *hashmap, const void *key, size_t key_size) {
                 HM_FREE(node);
             }
             hashmap->len--;
-            return;
+            return true;
         }
         prev = node;
         node = node->next;
     }
+    return false;
 }
 void hm_free(hashmap_t *hashmap) {
 
