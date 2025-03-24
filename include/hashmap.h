@@ -65,7 +65,7 @@ void *hm_getn(hashmap_t *hashmap, const void *key, size_t key_size, size_t *size
 void *hm_get_fail(hashmap_t *hashmap, const char *key, size_t *size);
 
 // true if deleted
-void hm_delete(hashmap_t *hashmap, const void *key, size_t key_size);
+bool hm_delete(hashmap_t *hashmap, const void *key, size_t key_size);
 
 void hm_debug(hashmap_t *hashmap);
 //'\n' will be printed after this is called

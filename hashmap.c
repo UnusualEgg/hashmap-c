@@ -173,7 +173,7 @@ void *hm_get_fail(hashmap_t *hashmap, const char *key, size_t *size) {
     return str;
 }
 
-void hm_delete(hashmap_t *hashmap, const void *key, size_t key_size) {
+bool hm_delete(hashmap_t *hashmap, const void *key, size_t key_size) {
     uint8_t *hash = SHA256((const unsigned char *)key, key_size, hashmap->last_hash);
     // TODO refactor
     struct hashmap_node *node = hashmap->nodes;
