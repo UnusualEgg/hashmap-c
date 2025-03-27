@@ -12,6 +12,9 @@
 #define HM_FREE(p) free(p)
 #endif
 
+typedef void (*hm_free_val_fn)(void *val);
+typedef void *(*hm_clone_val_fn)(void *val);
+
 struct hashmap_node {
     uint8_t key[SHA256_DIGEST_LENGTH];
     void *val;
@@ -21,6 +24,7 @@ struct hashmap_node {
 typedef struct {
     size_t len;
     struct hashmap_node *nodes;
+    hm_free_val_fn free_fn;
 
     struct hashmap_node **last;
     uint8_t last_hash[SHA256_DIGEST_LENGTH];
@@ -29,7 +33,7 @@ typedef struct {
 // creation&deletion
 hashmap_t *hm_create(void);
 void hm_free(hashmap_t *hashmap);
-hashmap_t *hm_clone(hashmap_t *m);
+hashmap_t *hm_clone(hashmap_t *m, hm_clone_val_fn clone_fn);
 
 // find
 #define hm_finds hm_find
@@ -39,14 +43,15 @@ struct hashmap_node *hm_findi(hashmap_t *hashmap, const int key);
 struct hashmap_node *hm_findx(hashmap_t *hashmap, const void *key, size_t key_size);
 
 // new
-#define hm_news hm_new
-void *hm_new(hashmap_t *hashmap, const char *key);
-void *hm_newc(hashmap_t *hashmap, const char key);
-void *hm_newi(hashmap_t *hashmap, const int key);
-void *hm_newx(hashmap_t *hashmap, const void *key, size_t key_size);
+#define hm_hashs hm_hash
+void *hm_hash(hashmap_t *hashmap, const char *key);
+void *hm_hashc(hashmap_t *hashmap, const char key);
+void *hm_hashi(hashmap_t *hashmap, const int key);
+void *hm_hashx(hashmap_t *hashmap, const void *key, size_t key_size);
 
 // set
 #define hm_sets hm_set
+// assumes you called hm_hash if node is NULL
 void *hm_set(hashmap_t *hashmap, struct hashmap_node *node, void *val);
 // set to pre malloc'd ptr
 void *hm_set_ptr(hashmap_t *hashmap, struct hashmap_node *node, void *p, size_t val_size);

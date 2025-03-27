@@ -9,12 +9,22 @@
 #include <stdlib.h>
 #include <string.h>
 // #include "print.h"
+// private
+static void hm_free_val(hm_free_val_fn free_fn, void *val) {
+    if (free_fn) {
+        free_fn(val);
+    } else {
+        HM_FREE(val);
+    }
+}
 
+// public
 hashmap_t *hm_create(void) {
     hashmap_t *m = HM_MALLOC(sizeof(hashmap_t));
     m->len = 0;
     m->nodes = NULL;
     m->last = &m->nodes;
+    m->free_fn = NULL;
     return m;
 }
 
@@ -56,25 +66,18 @@ struct hashmap_node *hm_findx(hashmap_t *hashmap, const void *key, size_t key_si
     hashmap->last = ptr;
     return NULL;
 }
-void *hm_new(hashmap_t *hashmap, const char *key) { return hm_newx(hashmap, key, strlen(key)); }
-void *hm_newc(hashmap_t *hashmap, const char key) { return hm_newx(hashmap, &key, 1); }
-void *hm_newi(hashmap_t *hashmap, const int key) {
-    return hm_newx(hashmap, (const char *)&key, sizeof(int));
+void *hm_hash(hashmap_t *hashmap, const char *key) { return hm_hashx(hashmap, key, strlen(key)); }
+void *hm_hashc(hashmap_t *hashmap, const char key) { return hm_hashx(hashmap, &key, 1); }
+void *hm_hashi(hashmap_t *hashmap, const int key) {
+    return hm_hashx(hashmap, (const char *)&key, sizeof(int));
 }
-void *hm_newx(hashmap_t *hashmap, const void *key, size_t key_size) {
+void *hm_hashx(hashmap_t *hashmap, const void *key, size_t key_size) {
     SHA256((const unsigned char *)key, key_size, hashmap->last_hash);
-    struct hashmap_node *node = hashmap->nodes;
-    struct hashmap_node **ptr = &hashmap->nodes;
-    while (node) {
-        ptr = &(node->next);
-        node = node->next;
-    }
-    hashmap->last = ptr;
     // so you can put this in the node parameter
     return NULL;
 }
 
-// if node is NULL then it assumes you called hm_new
+// if node is NULL then it assumes you called hm_hash
 void *hm_set_ptr(hashmap_t *hashmap, struct hashmap_node *node, void *p, size_t val_size) {
     if (node) {
         // set an existing one
@@ -127,7 +130,7 @@ void *hm_setx(hashmap_t *hashmap, struct hashmap_node *find, void *val, size_t v
         return find->val;
     }
     if (find->val_size != val_size) {
-        HM_FREE(find->val);
+        hm_free_val(hashmap->free_fn, find->val);
         find->val = HM_MALLOC(val_size);
     }
     memcpy(find->val, val, val_size);
@@ -182,11 +185,11 @@ bool hm_delete(hashmap_t *hashmap, const void *key, size_t key_size) {
         if (check_equ(node->key, hash)) {
             if (prev) {
                 prev->next = node->next;
-                HM_FREE(node->val);
+                hm_free_val(hashmap->free_fn, node->val);
                 HM_FREE(node);
             } else {
                 hashmap->nodes = node->next;
-                HM_FREE(node->val);
+                hm_free_val(hashmap->free_fn, node->val);
                 HM_FREE(node);
             }
             hashmap->len--;
@@ -197,8 +200,7 @@ bool hm_delete(hashmap_t *hashmap, const void *key, size_t key_size) {
     }
     return false;
 }
-void hm_free(hashmap_t *hashmap) {
-
+void hm_clear(hashmap_t *hashmap) {
     struct hashmap_node *node = hashmap->nodes;
     struct hashmap_node *next = hashmap->nodes;
     while (node) {
@@ -206,10 +208,13 @@ void hm_free(hashmap_t *hashmap) {
         printf("freeing node %p\n", node);
 #endif
         next = node->next;
-        HM_FREE(node->val);
+        hm_free_val(hashmap->free_fn, node->val);
         HM_FREE(node);
         node = next;
     }
+}
+void hm_free(hashmap_t *hashmap) {
+    hm_clear(hashmap);
     HM_FREE(hashmap);
 }
 
@@ -237,7 +242,7 @@ void hm_debugx(hashmap_t *hashmap, hm_value_handler handler) {
     printf("}\n");
 }
 
-hashmap_t *hm_clone(hashmap_t *m) {
+hashmap_t *hm_clone(hashmap_t *m, hm_clone_val_fn clone_fn) {
     hashmap_t *new = HM_MALLOC(sizeof(hashmap_t));
     if (!new) {
         return NULL;
@@ -263,13 +268,19 @@ hashmap_t *hm_clone(hashmap_t *m) {
             new_n = new_n->next;
         }
         memcpy(new_n->key, n->key, SHA256_DIGEST_LENGTH);
-        new_n->val = HM_MALLOC(n->val_size);
+
+        if (clone_fn) {
+            new_n->val = clone_fn(n->val);
+        } else {
+            new_n->val = HM_MALLOC(n->val_size);
+        }
         if (!new_n->val) {
             fprintf(stderr, "%s\n", strerror(errno));
             exit(EXIT_FAILURE);
         }
-
-        memcpy(new_n->val, n->val, n->val_size);
+        if (!clone_fn) {
+            memcpy(new_n->val, n->val, n->val_size);
+        }
         new_n->val_size = n->val_size;
         new_n->next = NULL;
 
