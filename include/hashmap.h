@@ -52,7 +52,7 @@ void *hm_hashx(hashmap_t *hashmap, const void *key, size_t key_size);
 // set
 #define hm_sets hm_set
 // assumes you called hm_hash if node is NULL
-void *hm_set(hashmap_t *hashmap, struct hashmap_node *node, void *val);
+void *hm_set(hashmap_t *hashmap, struct hashmap_node *node, char *val);
 // set to pre malloc'd ptr
 void *hm_set_ptr(hashmap_t *hashmap, struct hashmap_node *node, void *p, size_t val_size);
 void *hm_setc(hashmap_t *hashmap, struct hashmap_node *node, char val);

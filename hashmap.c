@@ -85,7 +85,6 @@ void *hm_set_ptr(hashmap_t *hashmap, struct hashmap_node *node, void *p, size_t 
         // set attributes
         node->val = p;
         node->val_size = val_size;
-        hashmap->len++;
         return node->val;
     }
     // make a new one
@@ -99,7 +98,7 @@ void *hm_set_ptr(hashmap_t *hashmap, struct hashmap_node *node, void *p, size_t 
     return node;
 }
 // string
-void *hm_set(hashmap_t *hashmap, struct hashmap_node *node, void *val) {
+void *hm_set(hashmap_t *hashmap, struct hashmap_node *node, char *val) {
     return hm_setx(hashmap, node, val, strlen(val));
 }
 // char
@@ -125,6 +124,7 @@ void *hm_setx(hashmap_t *hashmap, struct hashmap_node *find, void *val, size_t v
         memcpy(find->val, val, val_size);
         find->val_size = val_size;
         find->next = NULL;
+        hashmap->last = &find->next;
 
         hashmap->len++;
         return find->val;
@@ -185,13 +185,13 @@ bool hm_delete(hashmap_t *hashmap, const void *key, size_t key_size) {
         if (check_equ(node->key, hash)) {
             if (prev) {
                 prev->next = node->next;
-                hm_free_val(hashmap->free_fn, node->val);
-                HM_FREE(node);
+                if (!prev->next)
+                    hashmap->last = &prev->next;
             } else {
                 hashmap->nodes = node->next;
-                hm_free_val(hashmap->free_fn, node->val);
-                HM_FREE(node);
             }
+            hm_free_val(hashmap->free_fn, node->val);
+            HM_FREE(node);
             hashmap->len--;
             return true;
         }
