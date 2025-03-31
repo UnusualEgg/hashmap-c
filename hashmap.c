@@ -23,7 +23,7 @@ hashmap_t *hm_create(void) {
     hashmap_t *m = HM_MALLOC(sizeof(hashmap_t));
     m->len = 0;
     m->nodes = NULL;
-    m->last = &m->nodes;
+    m->last_next_ptr = &m->nodes;
     m->free_fn = NULL;
     return m;
 }
@@ -63,7 +63,7 @@ struct hashmap_node *hm_findx(hashmap_t *hashmap, const void *key, size_t key_si
         ptr = &(node->next);
         node = node->next;
     }
-    hashmap->last = ptr;
+    hashmap->last_next_ptr = ptr;
     return NULL;
 }
 void *hm_hash(hashmap_t *hashmap, const char *key) { return hm_hashx(hashmap, key, strlen(key)); }
@@ -88,7 +88,7 @@ void *hm_set_ptr(hashmap_t *hashmap, struct hashmap_node *node, void *p, size_t 
         return node->val;
     }
     // make a new one
-    node = *(hashmap->last); // last was set by find
+    node = *(hashmap->last_next_ptr); // last was set by find
     // set attributes
     memcpy(node->key, hashmap->last_hash, SHA256_DIGEST_LENGTH);
     node->val = p;
@@ -117,14 +117,14 @@ void *hm_setx(hashmap_t *hashmap, struct hashmap_node *find, void *val, size_t v
             fprintf(stderr, "%s\n", strerror(errno));
             exit(EXIT_FAILURE);
         }
-        *(hashmap->last) = find;
+        *(hashmap->last_next_ptr) = find;
         // set attributes
         memcpy(find->key, hashmap->last_hash, SHA256_DIGEST_LENGTH);
         find->val = HM_MALLOC(val_size);
         memcpy(find->val, val, val_size);
         find->val_size = val_size;
         find->next = NULL;
-        hashmap->last = &find->next;
+        hashmap->last_next_ptr = &find->next;
 
         hashmap->len++;
         return find->val;
@@ -186,7 +186,7 @@ bool hm_delete(hashmap_t *hashmap, const void *key, size_t key_size) {
             if (prev) {
                 prev->next = node->next;
                 if (!prev->next)
-                    hashmap->last = &prev->next;
+                    hashmap->last_next_ptr = &prev->next;
             } else {
                 hashmap->nodes = node->next;
             }

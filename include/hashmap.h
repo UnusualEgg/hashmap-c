@@ -26,7 +26,12 @@ typedef struct {
     struct hashmap_node *nodes;
     hm_free_val_fn free_fn;
 
-    struct hashmap_node **last;
+    // ptr to last node's next ptr
+    // essentially where the next allocated node ptr
+    // will be set
+    // defaults to &hashmap->nodes
+    // later is &node->last
+    struct hashmap_node **last_next_ptr;
     uint8_t last_hash[SHA256_DIGEST_LENGTH];
 } hashmap_t;
 
