@@ -248,6 +248,7 @@ hashmap_t *hm_clone(hashmap_t *m, hm_clone_val_fn clone_fn) {
         return NULL;
     }
     new->len = m->len;
+    new->free_fn = m->free_fn;
 
     struct hashmap_node *n = m->nodes;
     struct hashmap_node *new_n = NULL;
